@@ -1,0 +1,999 @@
+---
+title: "First Assignment SMDE"
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+  word_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+# Question 1
+## First question
+
+```{r}
+library(FactoMineR)
+data(decathlon)
+head(decathlon)
+summary(decathlon)
+colnames(decathlon)[c(1,5,6,10)]<-c("X100m","X400m","X110m.hurdle","X1500m")
+boxplot(decathlon$X100m ~ decathlon$Competition)
+```
+Here, we are comparing 100m times from the Decastar (the World Championships of Decathlon) and the Olympic Games 100m event. From this boxplot, we notice that the time needed to run 100m is higher for the Decastar competition than for the Olympics. Every metric (median, maximum, minimum, quartiles) is higher for the Decastar which means that the Olympic 100m sprinters are faster than the Decastar sprinters. This makes sense since, most 100m sprinters in the Olympics are ‘specialized’ in sprinting and will devote all their training time to sprinting whereas the decathlete must train for 9 other disciplines - some of which do not involve sprinting (example: Javelin). 
+
+## Second question
+```{r}
+decathlon$x100m_cat <- cut(decathlon$X100m,c(0,11,13), labels=c('<= 11s','> 11s'))
+pt <- table(decathlon$x100m_cat,decathlon$Competition)
+prop.table(pt)
+row_marg <- margin.table(pt,1)
+col_marg <- margin.table(pt,2)
+sweep(pt,1,row_marg,'/')
+chisq.test(pt)
+
+```
+This in mind, we see that the time seems to have a lot of influence on the likelihood of being either at the Olympics or the Decastar. When the time is under 11s, there is a very strong chance that we at at the Olympics. When it’s above 11s, it is a more evenly distributed: it is a slower time so the likelihood of being in the Decastar (where times are on average less impressive as demonstrated previously) is higher than before and is a now more or less the same as the one for the Olympics. Either way, the trend is not at all the same as the one observed for ‘<= 11s’, which is a strong indication that the two variables are not independent.
+We confirm this by executing a Chi-Squared test, for which the null hypothesis is H0 (The variables “x100m_cat” (representing whether the clocked time is <= 11s or not) and the variable “Competition” (indicating in which event the time was clocked (Olympics or Decastar)) are independent.)
+
+
+
+```{r}
+chisq.test(pt)
+```
+After the Chi-squared test (results below), we get a value of p = 0.005236 which is inferior to 0.05. Therefore, we can reject H0, i.e.: “x100m_cat” and “Competition” are not independent.
+
+## Third question
+```{r}
+par(mfrow=c(3,4))
+for(i in 1:ncol(decathlon)) {
+  if (is.numeric(decathlon[ , i])) {
+    print(colnames(decathlon)[i])
+    plot(density(decathlon[ , i]), main = colnames(decathlon)[i] )
+  }
+}
+```
+Purely from shape observation, it is quite difficult to tell which variables follow a normal distribution. The allure of most of the distributions seems to be that of a normal distribution. However, we could hypothesise that:
+-	“x1500m”, “Rank”, “Points” and “Javeline” do not since their distributions seem right skewed.
+-	“x110m.hurdle” neither as its distribution seems to have two peaks.
+
+
+
+We shall now confirm or deny these initial observations using a Shapiro test on each variable. For the Shapiro test, we have that the null hypothesis H0 is: “The variable being tested follows a normal distribution”. Here is a table containing the results of these tests:
+```{r}
+df_1 <- data.frame(matrix(ncol = 2, nrow = 12))
+colnames(df_1)<-c("Variable","p-value")
+rownames(df_1)<-colnames(decathlon)[c(1:12)]
+df_1[1,]<-shapiro.test(decathlon$X100)
+df_1[2,]<-shapiro.test(decathlon$Long.jump)
+df_1[3,]<-shapiro.test(decathlon$Shot.put)
+df_1[4,]<-shapiro.test(decathlon$High.jump)
+df_1[5,]<-shapiro.test(decathlon$X400m)
+df_1[6,]<-shapiro.test(decathlon$X110m.hurdle)
+df_1[7,]<-shapiro.test(decathlon$Discus)
+df_1[8,]<-shapiro.test(decathlon$Pole.vault)
+df_1[9,]<-shapiro.test(decathlon$Javeline)
+df_1[10,]<-shapiro.test(decathlon$X1500m)
+df_1[11,]<-shapiro.test(decathlon$Rank)
+df_1[12,]<-shapiro.test(decathlon$Points)
+df_1
+```
+Following these results, we get that the variables that do not follow a normal distribution are “X1500m”, “Rank”,” X110m.hurdle” (which had all already suspected prior to the test) as well as “High.jump” which we did not originally suspect from the shape of its distribution.
+
+## Fourth question
+```{r}
+v1=rnorm(50, mean=3, sd=1)
+v2=rnorm(50, mean=3, sd=2)
+v3=rnorm(50, mean=0, sd=1)
+
+```
+Below is a plot of 3 normal distributions such that two of them, v1 (black) and v2 (red), have the same mean (mean = 3), different standard deviations (sd = 1 and sd = 2) while the third one, v3 (yellow), has a different mean (mean = 0) but the same standard deviation with the first distribution (sd = 1):
+```{r}
+plot(density(v1),xlim=c(-5,5),main="3 Random Normal distributions")
+lines(density(v2),col=2)
+lines(density(v3),col=3)
+
+```
+We will execute a T-test on these variables, for which the null hypothesis H0 is: “The two variables used for the test have the same mean". Before starting, based on the way we have generated the variables, we are expecting to accept the test for the pair (v1,v2), and reject the rest.
+```{r}
+t.test(v1,v2)
+```
+
+
+```{r}
+t.test(v2,v3)
+```
+
+
+```{r}
+t.test(v1,v3)
+```
+Moreover, the tests provide the actual values of the means. We get that:
+•	mean(v1) = 3.028
+•	mean(v2) = 3.142
+•	mean(v3) = -0.084
+As expected, we get that the test passes for (v1,v2) and rejects for the rest, meaning the only equality of means happens between the distributions of v1 and v2.
+
+
+## Fifth question
+We execute two T-tests. The first is a T-test on the means the variable x100 split by the competition type, i.e. testing the x100 results obtained in the Olympics against those obtained in the Decastar. When we do this test, we get the following result :
+
+```{r}
+t.test(decathlon$X100m ~ decathlon$Competition)
+```
+The p-value has a value of 0.004 which is below 0.05 which leads us to reject the null hypothesis (“The mean of the Olympics x100 results is equal to the mean of the Decastar x100 results”), meaning that the means are not the same between the two competitions. The output of the test also informs us that, for the Olympics, the mean has the value 10.92s, whereas for the Decastar we have a mean of 11.18s. We can conclude that, based on the x100 data, the competitions are well and truly distinguishable, with the Olympians being faster.
+
+We repeat the procedure, using this time the x400 data, leading us to the following results:
+
+```{r}
+t.test(decathlon$X400m ~ decathlon$Competition)
+```
+
+
+
+```{r}
+t.test(decathlon$X400m,decathlon$X100m)
+```
+
+This time, the p-value very high, being equal to 0.95. We now accept the null hypothesis and conclude that the means of the x400m results in the Olympics and the Decastar are equal (roughly both equal to 49.62s). Therefore, even though with the x100m event, we were able to effectively differentiate the two competitions, this is no longer the case if we take into consideration the x400m data. It seems like performance wise, the Olympians and the Decastart athletes are on a very similar level.
+
+
+# Question 2
+## First Part of the Q-2
+### Generating the data and Data treatement
+
+
+```{r}
+library(dplyr)
+library(rstatix)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+```
+
+We will generate the three vectors
+```{r}
+v1=rnorm(200, mean=10, sd=5)
+v2=rnorm(200, mean=40, sd=5)
+v3=rnorm(200, mean=10, sd=5)
+```
+
+```{r}
+plot(density(v1),xlim=c(-45,45),main="Three Normal distributions")
+lines(density(v2),col=2)
+lines(density(v3),col=3)
+```
+
+```{r}
+v1n=data.frame(x1=v1, x2="v1")
+v2n=data.frame(x1=v2, x2="v2")
+v3n=data.frame(x1=v3, x2="v3")
+```
+
+```{r}
+library(RcmdrMisc)
+data=mergeRows(v1n, v2n, common.only=FALSE)
+data=mergeRows(as.data.frame(data), v3n, common.only=FALSE)
+head(data)
+```
+
+
+```{r}
+Boxplot(x1~x2,data=data,id=FALSE)
+```
+We can see that the averages of v1 and v3 are nearly the same
+
+Assumptions of ANOVA 
+
+#### Identifying outliers
+
+```{r}
+data %>% 
+  group_by(x2) %>%
+  identify_outliers(x1)
+```
+
+
+There are too few outliers, we will consider that they don't have an impact on this anova treatment
+
+#### Shapiro test
+
+```{r}
+#implementing the linear model
+model  <- lm(x1 ~ x2,
+             data = data)
+# Creating a QQ plot of the residuals
+ggqqplot(residuals(model))
+```
+We can see that the points are in the normal distribution area, we will further confirm this result whith the shapiro test
+
+```{r}
+#The populations from which the samples are selected must be normal.
+#Shapiro test
+shapiro.test(residuals(model))
+```
+
+The shapiro test is respected as the p-value is greater than 0.05, the condition is satisfied
+
+#### The homogeneity of variances
+
+```{r}
+data %>%
+  levene_test(x1 ~ x2)
+```
+The p-value is greater than 0.05, the H0 hypothesis is respected and the condition is satisfied
+
+#### Pairwise t test without correction
+
+```{r}
+#data(data=data, package="FactoMineR")
+
+pairwise.t.test(data$x1, data$x2, p.adj="none")
+
+```
+
+We see that v1 and v2 have the same mean as the p-value is greater than 0.05, the couples (v1 and v3) and (v2 and v3) don't have the same mean
+
+
+### ANOVA assumptions test
+
+```{r}
+res.aov <- data %>% anova_test(x1 ~ x2)
+res.aov
+```
+
+the p value is extremely small, thee H0 hypothesis is not respected and the mean depends on the category
+
+### Post hoc test
+
+```{r}
+pwc <- data %>% tukey_hsd(x1 ~ x2)
+pwc
+```
+
+The difference between (v2 and v3) and (v1 and v3) is the most significant difference as the p-value is a lot less than 0.05 and the H0 hypothesis is not respected
+
+
+## Treatement of the diabete data
+
+
+```{r}
+library(readr)
+diabetes <- read_csv("~/Desktop/diabetes.csv")
+```
+We detect diabetic people in different age categories
+```{r}
+sel<-which(diabetes$Age<30)
+under30<-diabetes[diabetes$Age<30,]
+mid_age<-diabetes[diabetes$Age>30 & diabetes$Age<50, ]
+over_50<-diabetes[diabetes$Age>50,]
+
+```
+
+### First question
+
+```{r}
+positive_under30<-under30[which(under30[,"Outcome"]==1),]
+percentage_young_positive<-(nrow(positive_under30)/nrow(under30))*100
+percentage_young_positive
+```
+
+21% of the young people have diabete
+
+```{r}
+positive_midage<-under30[which(mid_age[,"Outcome"]==1),]
+positive_midage
+```
+```{r}
+percentage_midage_positive<-(nrow(positive_midage)/nrow(mid_age))*100
+percentage_midage_positive
+```
+51% of the mid aged people have diabete
+
+```{r}
+positive_overage<-over_50[which(over_50[,"Outcome"]==1),]
+positive_overage
+```
+```{r}
+percentage_overage_positive<-(nrow(positive_overage)/nrow(over_50))*100
+percentage_overage_positive
+```
+47% of the aged people have diabete
+
+### Second question 
+We will plot the matrix of correlation between the different categories in order to show those who are the most related to diabete
+```{r}
+
+res <- cor(diabetes, use = "complete.obs")
+res
+```
+
+```{r}
+library(corrplot)
+corrplot(res)
+```
+We see that the outcome (diabete) is highly related with the Glucose rate in the body.
+It's also related with the body mass index and age
+
+### Third question
+
+We will add a new variable giving us the age category
+```{r}
+diabetes$age_category<-0
+sel<-which(diabetes$Age<30)
+diabetes[sel,"age_category"]<-1
+sout<-which(diabetes$Age>=30 & diabetes$Age<50)
+diabetes[sout,"age_category"]<-2
+sin<-which(diabetes$Age>=50)
+diabetes[sin,"age_category"]<-3
+```
+
+
+
+```{r}
+diabetes %>%
+  group_by(age_category, Outcome) %>%
+  get_summary_stats(BloodPressure, type = "mean_sd")
+```
+Diabete: - doesn't change bloodPressure for young people,
+         - doesn't change bloodPressure for mid aged people
+         - increases bloodPressure for aged people
+         
+Age: -increases bloodpressure overall
+     - Increases bloodpressure for diabetic peopl, this increase gets biggers with age, especially after 45 years
+     - Increases bloodpressure for non diabetic people but in a less agressive manner than for the >45 years diabetic people
+     
+     
+```{r}
+bxp <- ggboxplot(diabetes,x = "age_category", y = "BloodPressure", color = "Outcome", palette = "jco")
+bxp
+```
+
+```{r}
+diabetes %>%
+  group_by(Outcome, age_category) %>%
+  identify_outliers(BloodPressure)
+```
+#### Treatement of the hypothesis and conditions
+##### Removing the outliers
+```{r}
+Boxplot(diabetes$BloodPressure)
+```
+
+
+```{r}
+boxplot(diabetes$BloodPressure, plot=FALSE)$out
+outliers<-boxplot(diabetes$BloodPressure, plot=FALSE)$out
+diabetes_corrected<- diabetes[-which(diabetes$BloodPressure %in% outliers),]
+```
+
+`
+##### Verifying the normality hypothesis
+
+```{r}
+#implementing the linear model
+model  <- lm(BloodPressure ~ Outcome*age_category,
+             data = diabetes)
+# Creating a QQ plot of the residuals
+ggqqplot(residuals(model))
+```
+
+```{r}
+shapiro_test(residuals(model))
+```
+
+the p value is really low so the original data with the initial outliers doesn't follow a normal distribution.
+
+We will check if our outliers correction was effective in that sense.
+
+```{r}
+#implementing the linear model
+model_1  <- lm(BloodPressure ~ Outcome*age_category,
+             data = diabetes_corrected)
+# Creating a QQ plot of the residuals
+ggqqplot(residuals(model_1))
+```
+We can see that all our points are now in the normal area.
+
+We check with the shapiro test:
+```{r}
+shapiro_test(residuals(model_1))
+```
+Our p-value is greater than 0.05, the normality condition is thus verified.
+
+##### Homogenity of variances:
+
+```{r}
+
+diabetes_corrected$Outcome<-factor((diabetes_corrected$Outcome))
+diabetes_corrected$age_category<-factor(diabetes_corrected$age_category)
+#As the levene test doesn't accept quantitative variables, we enter Outcome an age category as qualitative variables
+diabetes_corrected %>%
+  levene_test(BloodPressure ~ Outcome*age_category)
+```
+We see that p>0.05, this condition is thus respected.
+
+#### Anova test
+
+```{r}
+res.aov <- diabetes_corrected %>% 
+  anova_test(BloodPressure ~ Outcome * age_category)
+res.aov
+```
+
+The H0 hypothesis denotes that the blood pressure is the same for all the categories. 
+Here the p-value 0.046 is smaller than 0.05, the H0 hypothesis is thus not respected
+BloodPressure thus depends on Diabete and age category.
+
+#### Analysing this dependance
+
+```{r}
+model <- lm(BloodPressure ~ Outcome * age_category, data = diabetes_corrected)
+diabetes_corrected %>%
+  group_by(age_category) %>%
+  anova_test(BloodPressure ~ Outcome, error = model)
+```
+
+Diabete's effect on bloodpressure is significant for the youngest category while it doesn't have a big dependance for the other two age categories. We think that Bloodpressure is high in all cases for the old people.
+
+```{r}
+model <- lm(BloodPressure ~ Outcome * age_category, data = diabetes_corrected)
+diabetes_corrected %>%
+  group_by(Outcome) %>%
+  anova_test(BloodPressure ~ age_category, error = model)
+```
+Age has a significative effect on bloodpressure for either diabetic or non diabetic people.
+
+### Fourth question 
+#### Trying with the Outcome variable
+##### Outliers
+We first suspected the outcome variable to be the best suited for an ANOVA analysis
+
+```{r}
+diabetes %>% 
+  group_by(Outcome) %>%
+  identify_outliers(Insulin)
+```
+
+```{r}
+boxplot(diabetes$Insulin, plot=FALSE)$out
+outliers<-boxplot(diabetes$Insulin, plot=FALSE)$out
+diabetes_corrected_2<- diabetes[-which(diabetes$Insulin %in% outliers),]
+```
+
+
+##### Shapiro test
+
+```{r}
+#implementing the linear model
+model  <- lm(Insulin ~ Outcome,
+             data = diabetes_corrected_2)
+# Creating a QQ plot of the residuals
+ggqqplot(residuals(model))
+```
+We can see that, even after removing the outliers,we are still really far from a normal distribution. the Outcome variable is thus not the best suited for an ANOVA analysis.
+
+#### Trying with the other variables
+```{r}
+#implementing the linear model
+model_1  <- lm(Insulin ~ Pregnancies,data = diabetes)
+model_2  <- lm(Insulin ~ Glucose,data = diabetes)
+model_3  <- lm(Insulin ~ BloodPressure,data = diabetes)
+model_4  <- lm(Insulin ~ SkinThickness,data = diabetes)
+# Creating a QQ plot of the residuals
+par(mfrow=c(2,2))
+bp<-ggqqplot(residuals(model_1))
+dp<-ggqqplot(residuals(model_2))
+vp<-ggqqplot(residuals(model_3))
+sc<-ggqqplot(residuals(model_4))
+library(gridExtra)
+grid.arrange(bp, dp, vp, sc, ncol=2, nrow = 2)
+```
+
+```{r}
+#implementing the linear model
+model_5  <- lm(Insulin ~ BMI,data = diabetes)
+model_6  <- lm(Insulin ~ DiabetesPedigreeFunction,data = diabetes)
+model_7  <- lm(Insulin ~ age_category,data = diabetes)
+model_8  <- lm(Insulin ~ Outcome,data = diabetes)
+# Creating a QQ plot of the residuals
+par(mfrow=c(2,2))
+bp<-ggqqplot(residuals(model_5))
+dp<-ggqqplot(residuals(model_6))
+vp<-ggqqplot(residuals(model_7))
+sc<-ggqqplot(residuals(model_8))
+library(gridExtra)
+grid.arrange(bp, dp, vp, sc, ncol=2, nrow = 2)
+```
+We can see that the second model is the most close to a normal distribution , Glucose can be a good variable to use for an ANOVA analysis of Insulin. SkinThickeness is also a good candidate for an ANOVA analysis
+However this analysis is not of a great accuracy.
+We will thus calculate the p-values.
+
+```{r}
+#The populations from which the samples are selected must be normal.
+#Shapiro test
+df <- data.frame(matrix(ncol = 3, nrow = 8))
+colnames(df)<-c("model","statistic","p-value")
+
+df[1,]<-shapiro_test(residuals(model_1))
+df[2,]<-shapiro_test(residuals(model_2))
+df[3,]<-shapiro_test(residuals(model_3))
+df[4,]<-shapiro_test(residuals(model_4))
+df[5,]<-shapiro_test(residuals(model_5))
+df[6,]<-shapiro_test(residuals(model_6))
+df[7,]<-shapiro_test(residuals(model_7))
+df[8,]<-shapiro_test(residuals(model_8))
+df
+```
+
+We can see that given the p-values calculated, Insulin and SkinThickness are the two variables that would be the best suited for an Anova analysis. 
+
+# Question 3
+```{r}
+#install.packages(RcmdrPlugin.FactoMineR)
+#install.packages("Rcmdr",dependencies=TRUE)
+#install.packages("FactoMineR",dependencies=TRUE)
+#install.packages("weatherData",repos = "http://cran.us.r-project.org")
+
+library(FactoMineR)
+data(decathlon)
+data(decathlon)
+colnames(decathlon)
+head(decathlon)
+summary(decathlon)
+```
+## Most correlated variable with X1500m
+### Correlation matrix
+To start, we must figure out which of the variables of the data have the most correlation with X1500m in order to be a good predictor for the linear expression.
+Instead of comparing all variables one by one with X1500m, we used a correlation matrix to view all combinations and their correlation value. We visualized the results with the corrplot method from the corrplot library.
+
+
+
+We will Add X in front of the variables 100m, 400m, 110m.hurdle and 1500m. Otherwise,in the lm function they are not read since they begin with a number.
+
+```{r}
+colnames(decathlon)[c(1,5,6,10)]<-c("X100m","X400m","X110m.hurdle","X1500m")
+```
+
+
+
+```{r}
+cor(decathlon[1:12])#last column is not numerical
+```
+
+
+```{r}
+M = cor(decathlon[1:12])
+corrplot(M, method = 'number')
+```
+
+The most positive correlations from independent variables are X400m (0.41), Discus (0.26), and Pole.vault (0.25), whereas X400m has the highest correlation with X1500m.
+
+To further determine the strength of the linear relationship between those variables and X1500m, we created scatterplots to visualize the data.
+
+### Scatterplots for X400m, Discus, Pole.vault
+```{r}
+par(mfrow=c(1,3))
+scatterplot(X1500m~X400m, regLine=lm, smooth=FALSE, data=decathlon)
+scatterplot(X1500m~Discus, regLine=lm, smooth=FALSE, data=decathlon)
+scatterplot(X1500m~Pole.vault, regLine=lm, smooth=FALSE, data=decathlon)
+```
+
+In these scatterplots, we can observe two numerical variables while the line indicates the level of the linear relationship, which can be moderate, strong or weak. When the points are closer to the line, the linear relationship is stronger and when they are further away from the line, the linear relationship is weaker.
+
+We can state that there is a positive moderate linear relationship between X400m and X1500m. The other variables shows a weaker linear relationship.
+
+
+### Testing regression assumptions
+The next step is to test the regressions assumptions (normality of the error term, homogeneity of variance, independence of errors) on the defined linear models.
+
+#### Regression 1
+In the following, we can see how to perform the assumption tests for regression model Reg1.
+```{r}
+# Reg1
+Reg1 <-lm(X1500m ~ X400m, data=decathlon)
+summary(Reg1)
+```
+
+
+
+##### 1. Normality of the Error Term 
+
+Using QQ plot
+```{r}
+qqnorm(residuals(Reg1))
+```
+
+Using Histogram
+```{r}
+hist(residuals(Reg1))
+```
+
+Shapiro Wilks Test
+```{r}
+
+shapiro.test(residuals(Reg1))
+```
+
+
+
+##### 2. Homogenity of Variance
+Residual Analysis 
+```{r}
+plot(residuals(Reg1))
+```
+
+
+Breusch Pagan Test
+```{r}
+library(lmtest)
+bptest(Reg1)
+```
+
+
+
+##### 3. The independence of errors  
+```{r}
+dwtest(Reg1, alternative = "two.sided")
+```
+
+#### Regression 2
+In the following, we can see how to perform the assumption tests for regression model Reg1.
+```{r}
+# Reg2
+Reg2 <-lm(X1500m ~ Discus, data=decathlon)
+summary(Reg2)
+```
+
+##### 1. Normality of the Error Term 
+
+Using QQ plot
+```{r}
+qqnorm(residuals(Reg2))
+```
+
+Using Histogram
+```{r}
+hist(residuals(Reg2))
+```
+
+Shapiro Wilks Test
+```{r}
+
+shapiro.test(residuals(Reg2))
+```
+
+
+
+##### 2. Homogenity of Variance
+Residual Analysis 
+```{r}
+plot(residuals(Reg2))
+```
+
+
+Breusch Pagan Test
+```{r}
+bptest(Reg2)
+```
+
+
+
+##### 3. The independence of errors  
+```{r}
+dwtest(Reg2, alternative = "two.sided")
+```
+
+#### Regression 3
+In the following, we can see how to perform the assumption tests for regression model Reg1.
+```{r}
+# Reg3
+Reg3 <-lm(X1500m ~ Pole.vault, data=decathlon)
+summary(Reg3)
+```
+
+##### 1. Normality of the Error Term 
+
+Using QQ plot
+```{r}
+qqnorm(residuals(Reg3))
+```
+
+Using Histogram
+```{r}
+hist(residuals(Reg3))
+```
+
+Shapiro Wilks Test
+```{r}
+
+shapiro.test(residuals(Reg3))
+```
+
+
+
+##### 2. Homogenity of Variance
+Residual Analysis 
+```{r}
+plot(residuals(Reg3))
+```
+
+
+Breusch Pagan Test
+```{r}
+bptest(Reg3)
+```
+
+
+
+##### 3. The independence of errors  
+```{r}
+dwtest(Reg3, alternative = "two.sided")
+```
+
+#### Regression 4
+In the following, we can see how to perform the assumption tests for regression model Reg4.
+```{r}
+# Reg4
+Reg4 <-lm(X1500m ~ X400m+Discus, data=decathlon)
+summary(Reg4)
+```
+
+##### 1. Normality of the Error Term 
+
+Using QQ plot
+```{r}
+qqnorm(residuals(Reg4))
+```
+
+Using Histogram
+```{r}
+hist(residuals(Reg4))
+```
+
+Shapiro Wilks Test
+```{r}
+shapiro.test(residuals(Reg4))
+```
+
+
+
+##### 2. Homogenity of Variance
+Residual Analysis 
+```{r}
+plot(residuals(Reg4))
+```
+
+
+Breusch Pagan Test
+```{r}
+bptest(Reg4)
+```
+
+
+
+##### 3. The independence of errors  
+```{r}
+dwtest(Reg4, alternative = "two.sided")
+```
+
+#### Regression 5
+In the following, we can see how to perform the assumption tests for regression model Reg5.
+```{r}
+# Reg5
+Reg5 <-lm(X1500m ~ X400m + Discus + Pole.vault,, data=decathlon)
+summary(Reg5)
+```
+
+##### 1. Normality of the Error Term 
+
+Using QQ plot
+```{r}
+qqnorm(residuals(Reg5))
+```
+
+Using Histogram
+```{r}
+hist(residuals(Reg5))
+```
+
+Shapiro Wilks Test
+```{r}
+shapiro.test(residuals(Reg5))
+```
+
+
+
+##### 2. Homogenity of Variance
+Residual Analysis 
+```{r}
+plot(residuals(Reg5))
+```
+
+
+Breusch Pagan Test
+```{r}
+bptest(Reg5)
+```
+
+
+
+##### 3. The independence of errors  
+```{r}
+dwtest(Reg5, alternative = "two.sided")
+```
+
+When comparing the results from the different regression models, we can determine that model Reg5 is the best of the defined models, because it is able to explain 37.4% of the variance of the X1500m and it has the least residual error (9.605) out of all the models.
+
+
+Afterwards we want to use our linear expression to predict the behavior of an athlete, but we will check first if the model is accurate. We can look at the confidence intervals of each athlete and compare it to the real value of the X1500m.
+
+### Confidence intervals for the parameters of the model
+```{r}
+confint(Reg5)
+```
+
+###Predicted Values of the Response
+```{r}
+yhat<-Reg5$fitted.values
+yhat
+```
+
+
+### Predicted Values of the Response with Their confidence Levels
+```{r}
+predict.lm(Reg5,interval="confidence")
+```
+
+We can also compare the Root Mean Squared Error (RMSE) of the training and the test data
+
+### Model Validation 
+#### Test-Train Models 
+```{r}
+n <- nrow(decathlon)
+train.sample <- sample(1:n, round(0.67*n))
+train.set <- decathlon[train.sample, ] 
+test.set <- decathlon[-train.sample, ] 
+
+train.Reg5 <- lm(X1500m ~ X400m + Discus + Pole.vault, data=decathlon)
+summary(train.Reg5)
+```
+
+
+
+```{r}
+yhat<-predict(train.Reg5, test.set, interval="prediction")
+yhat
+```
+
+
+```{r}
+y<-test.set$X1500m
+error<-cbind(yhat[,1,drop=FALSE],y,(y-yhat[,1])^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+```
+
+
+### Root Mean Square Error ###
+
+```{r}
+RMSE<-sqrt(mse/(nrow(test.set)))
+RMSE
+```
+
+
+```{r}
+names(train.Reg5)
+RMSE_train<- sqrt(mean((train.Reg5$residuals)^2)/nrow(train.set))
+RMSE_train
+```
+
+In both cases, we see that the test data does not deviate much from the predicted values, so we can say that Reg5 is accurate.
+
+# Question 4
+```{r}
+#install.packages('HSAUR2')
+#install.packages("FactoMineR")
+library(FactoMineR)
+library(lmtest)
+
+data("heptathlon", package = "HSAUR2")
+summary(heptathlon)
+```
+
+
+## Heptathlon dataset
+```{r}
+res_PCA<-PCA(heptathlon,scale=TRUE, graph=FALSE) # by default scale=TRUE
+res_PCA$eig
+```
+We instantly see that in order to surpass 70% in cumulative percentage of variance, we should retain the two first components. By retaining the two first directions (“comp1” and “comp2”), we explain 83% of the variance of the data, which is satisfactory. Although, it’s important t onotice that the first component already explains 68% (almost 70%) of the variance; so we could almost just retain “comp1”. 
+
+
+We now project each variable onto these two components. By doing so, we obtain the following Variable Chart :
+```{r}
+#res_PCA$var$coord 
+#res_PCA$var$cor
+plot(res_PCA,choix="var")
+
+```
+
+By observing this chart, we can see that our model is not very efficient. The only variable that seems to contribute the the second dimension is “javelin”. All the other variables have a low coordinate along this axis and hence hardly contribute to it. The whole point of PCA being to summarize data, here our second dimension is essentially explaining “javelin” only. This is not a good model. The Individual Chart seems to confirm this observation :
+
+
+```{r}
+#res_PCA$ind$coord
+plot(res_PCA,choix = "ind")
+```
+We see that Laura (PNG) and Choubenkova (URS) are the two individuals with the highest coordinate along Dim 2, and Hautenauve (BEL) and Hagger (GB) the two with the lowest. If we look at the javelin results in the data set, Laura and Choubenkova are the top performers, Hautenauve and Hagger are the worst. This confirms that Dim2 is esentially a direct reflection of the javelin variable.
+Moreover, if we take a look at the first dimension, all the variables (except “javelin”) seem to contribute equally to it : in magnitude, their coordinate along Dim 1 is approximately 0.8, which is quite high. It is quite hard therefore to identify a possible interpretation of this component, hence once again the model is not very functional.
+
+
+
+## Principal Component Regression
+
+We shall now construct a regression of the variable “score” using the two components we previously retained. We do so using the following R script :
+
+```{r}
+heptathlon$PC1<-res_PCA$ind$coord[,1]
+heptathlon$PC2<-res_PCA$ind$coord[,2]
+hepta_reg<-lm(score~PC1 + PC2, data=heptathlon)
+summary(hepta_reg)
+```
+
+Let’s also make sure we are actually in a position to execute such a regression. To do so, let’s check the assumptions that are :
+•	Normality of the residuals (checked via a Shapiro test)
+•	Homogeneity of the residuals variance, a.k.a homoscedasticity (checked via a Breusch-Pagan test)
+•	Independence of residuals error terms (checked via a Durbin-Watson test)
+
+### Normality 
+```{r}
+shapiro.test(residuals(hepta_reg))
+```
+The p-value being inferior to 0.05, we reject H0 and therefore conclude that the residuals are not normally distributed, which is problematic.
+
+###Homogeneity
+```{r}
+bptest(hepta_reg)
+```
+The p-value being superior to 0.05, we accept H0 and therefore conclude we do indeed have homoscedasticity.
+
+### Homogeneity
+```{r}
+dwtest(hepta_reg)
+```
+The p-value being again superior to 0.05, we accept H0 and conclude that the residuals are independent.
+
+
+## Prediction
+The data associated with this regression is the following :
+```{r}
+n <- nrow(heptathlon)
+train.sample1 <- sample(1:n, round(0.67*n))
+train.set1 <- heptathlon[train.sample1, ] 
+test.set1 <- heptathlon[-train.sample1, ] 
+
+train.model <- lm(score ~ PC1+PC2 , data = heptathlon[train.sample1,])
+summary(train.model)
+```
+
+We see that the R² value for this model is 99% (0.9984) which is very high and hence suggests that the model is very efficient in predicting. Our predictors, PC1 and PC2 are capable of explaining 99% of the variation in scores. 
+```{r}
+yhat<-predict(train.model, heptathlon[-train.sample1,], interval="prediction")
+yhat
+```
+We finally compute the residual mean squared error to confirm yhe choice of this model
+```{r}
+y<-test.set1$score
+
+error<-cbind(yhat[,1,drop=FALSE],y,(yhat[,1]-y)^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+RMSE<-sqrt(mse/(nrow(test.set1)))
+RMSE
+
+```
+Moreover, when we compute the RMSE (see R script), we get that a low value , which also seems very low since it corresponds to the average deviation between the predicted score and the real score, and the value of a score is usually in the thousands (6137,5746 etc…). These two metrics being analyzed, we can conclude that the model seems efficient in predicting a score.
+
